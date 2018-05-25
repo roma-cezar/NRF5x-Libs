@@ -28,6 +28,8 @@ bool rx_data_rdy = false;
 	#include "semphr.h"
 	#define LONG_TIME 0xffff
 	SemaphoreHandle_t m_uart_data_ready = NULL;
+#else
+#include "nrf_delay.h"
 #endif
 
 #if defined (NRF51822)
@@ -141,12 +143,23 @@ char *ESP8266_Wlan_Start(const char* SSID, const char* PASS)
 	char cmd[32];
 	char ip[16];
 		
-	vTaskDelay(1000);
+	#if defined (FREERTOS)
+		vTaskDelay(1000);
+	#else
+		nrf_delay_ms(1000);
+	#endif
+	
 	if(ESP8266_AtCmd(answer, "AT+RST", "OK"))
 	{
 		SEGGER_RTT_WriteString(0, "Reseted succesfuly!\r\n");
 	}
-	vTaskDelay(1200);
+	
+	#if defined (FREERTOS)
+		vTaskDelay(1200);
+	#else
+		nrf_delay_ms(1200);
+	#endif
+	
 	
 	if(ESP8266_AtCmd(answer, "AT", "OK"))
 	{
