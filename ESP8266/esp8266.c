@@ -62,7 +62,7 @@ void UARTE0_UART0_IRQHandler(void)
 
 bool ESP8266_AtCmd(uint8_t* databack, const char* cmd, const char* answer)
 {
-	bool ret = false;
+	bool ret = true;
 	uint8_t err_cnt = 0;
 	bytes_rx = 0;
 	memset(databack, 0, BUF_MAX_SIZE);
@@ -83,18 +83,26 @@ bool ESP8266_AtCmd(uint8_t* databack, const char* cmd, const char* answer)
 			if(xSemaphoreTake(m_uart_data_ready, ( TickType_t )15000) == pdTRUE)
 			#else
 			err_cnt++;
-			if(rx_data_rdy)
+			while(!rx_data_rdy)
 			#endif
 			{
-				#ifndef FREERTOS
-				rx_data_rdy = false;
-				#endif
 				if(strstr((const char*)rx_buf, "ERROR"))
 				{
 					SEGGER_RTT_WriteString(0, "AT command error!\r\n");
 					ret = false;
 					break;
 				}
+				#ifndef FREERTOS
+				rx_data_rdy = false;
+				nrf_delay_ms(10);
+				if(err_cnt==1500)
+				{
+					err_cnt = 0;
+					SEGGER_RTT_WriteString(0, "AT answer timeout!\r\n");
+					ret = false;
+					break;
+				}
+				#endif
 			}
 			#ifdef FREERTOS
 			else
@@ -123,7 +131,6 @@ bool ESP8266_AtCmd(uint8_t* databack, const char* cmd, const char* answer)
 	rx_data_rdy = false;
 	bytes_rx = 0;
 	err_cnt = 0;
-	ret = true;
 	return ret;
 }
 
