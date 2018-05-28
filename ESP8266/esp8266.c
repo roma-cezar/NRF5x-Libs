@@ -84,32 +84,38 @@ bool ESP8266_AtCmd(uint8_t* databack, const char* cmd, const char* answer)
 			#ifdef FREERTOS
 			if(xSemaphoreTake(m_uart_data_ready, ( TickType_t )15000) == pdTRUE)
 			#else
-			err_cnt++;
 			while(!rx_data_rdy)
 			#endif
 			{
 				if(strstr((const char*)rx_buf, "ERROR"))
 				{
+					#ifdef ESP_DEBUG
 					SEGGER_RTT_WriteString(0, "AT command error!\r\n");
+					#endif
 					ret = false;
 					break;
 				}
 				#ifndef FREERTOS
 				rx_data_rdy = false;
-				nrf_delay_ms(10);
-				if(err_cnt==1500)
+				nrf_delay_ms(1);
+				if(err_cnt==15000)
 				{
 					err_cnt = 0;
+					#ifdef ESP_DEBUG
 					SEGGER_RTT_WriteString(0, "AT answer timeout!\r\n");
+					#endif
 					ret = false;
 					break;
 				}
+				err_cnt++;
 				#endif
 			}
 			#ifdef FREERTOS
 			else
 			{
+				#ifdef ESP_DEBUG
 				SEGGER_RTT_WriteString(0, "Semaphore timeout!\r\n");
+				#endif
 				//if(err_cnt == 6) NVIC_SystemReset();
 			}
 			#endif
@@ -126,7 +132,9 @@ bool ESP8266_AtCmd(uint8_t* databack, const char* cmd, const char* answer)
 		}
 		else
 		{
+			#ifdef ESP_DEBUG
 			SEGGER_RTT_WriteString(0, "Error answer cmd or null back pointer!\r\n");
+			#endif
 		}
 	}
 	memset(rx_buf, 0 , BUF_MAX_SIZE);
@@ -144,14 +152,16 @@ char *ESP8266_Wlan_Start(const char* SSID, const char* PASS)
 	char ip[16];
 		
 	#if defined (FREERTOS)
-		vTaskDelay(1000);
+		vTaskDelay(100);
 	#else
-		nrf_delay_ms(1000);
+		nrf_delay_ms(100);
 	#endif
 	
 	if(ESP8266_AtCmd(answer, "AT+RST", "OK"))
 	{
+		#ifdef ESP_DEBUG
 		SEGGER_RTT_WriteString(0, "Reseted succesfuly!\r\n");
+		#endif
 	}
 	
 	#if defined (FREERTOS)
@@ -163,7 +173,9 @@ char *ESP8266_Wlan_Start(const char* SSID, const char* PASS)
 	
 	if(ESP8266_AtCmd(answer, "AT", "OK"))
 	{
+		#ifdef ESP_DEBUG
 		SEGGER_RTT_WriteString(0, "ESP8266 is OK!\r\n");
+		#endif
 	}
 	
 	/*if(ESP8266_AtCmd(answer, "AT+GMR", "OK"))
@@ -177,11 +189,16 @@ char *ESP8266_Wlan_Start(const char* SSID, const char* PASS)
 		SEGGER_RTT_WriteString(0, (const char*)"\r\n");
 	}	*/
 	
+	#ifdef ESP_DEBUG
 	SEGGER_RTT_WriteString(0, (const char*)"Connecting to AP...\r\n");
+	#endif
+	
 	memset(cmd, 0 , 32);
 	sprintf(cmd, "AT+CWJAP=\"%s\",\"%s\"", SSID, PASS); //"AT+CWJAP=\"dd-wrt\",\"bora-bora04\""
 	if(ESP8266_AtCmd(answer, cmd, "OK")){
+		#ifdef ESP_DEBUG
 		SEGGER_RTT_WriteString(0, (const char*)"Connected to AP succesfuly!\r\n");
+		#endif
 	}	
 	
 	memset(ip, 0 , 16);
@@ -203,11 +220,13 @@ bool ESP8266_Session_Open(const char* type, const char* ip, uint16_t port)
 	sprintf(cmd, "AT+PING=\"%s\"", ip);
 	if(ESP8266_AtCmd(answer, cmd, "OK"))
 	{
-		SEGGER_RTT_WriteString(0, (const char*)"Ping OK!\r\n");	
 		
+		#ifdef ESP_DEBUG
+		SEGGER_RTT_WriteString(0, (const char*)"Ping OK!\r\n");	
 		memset(cmd, 0 , 64);
 		sprintf(cmd, "Connecting to %s:%d...\r\n", ip, port);
 		SEGGER_RTT_WriteString(0, (const char*)cmd);
+		#endif
 		
 		memset(cmd, 0 , 64);
 		sprintf(cmd, "AT+CIPSTART=\"%s\",\"%s\",%d", type, ip, port);
@@ -215,31 +234,39 @@ bool ESP8266_Session_Open(const char* type, const char* ip, uint16_t port)
 		{
 			if(strstr((const char*)answer, "CONNECT"))
 			{	
-				memset(cmd, 0 , 64);
-				sprintf(cmd, "Connected to %s:%d succesfuly\r\n", ip, port);
-				SEGGER_RTT_WriteString(0, (const char*)cmd);
 				if(ESP8266_AtCmd(answer, "AT+CIPMODE=0", "OK"))
 				{
+					#ifdef ESP_DEBUG
+					memset(cmd, 0 , 64);
+					sprintf(cmd, "Connected to %s:%d succesfuly\r\n", ip, port);
+					SEGGER_RTT_WriteString(0, (const char*)cmd);
+					#endif
 					ret = true;
 				}
 			}
 			else
 			{
+				#ifdef ESP_DEBUG
 				SEGGER_RTT_WriteString(0, (const char*)"Connecting error!\r\n");
+				#endif
 				ret = false;
 			}
 		}
 		else
 		{
+			#ifdef ESP_DEBUG
 			SEGGER_RTT_WriteString(0, (const char*)"Server not avaliable!\r\n");
+			#endif
 			ret = false;
 		}
 	}	
 	else
 	{
+		#ifdef ESP_DEBUG
 		memset(cmd, 0 , 64);
 		sprintf(cmd, "IP: %s is not avaliable!\r\n", ip);
 		SEGGER_RTT_WriteString(0, (const char*)cmd);
+		#endif
 		ret = false;
 	}
 	return ret;
@@ -252,19 +279,25 @@ bool ESP8266_Session_Close(void)
 	if(ESP8266_AtCmd(answer, "AT+CIPCLOSE", "OK"))
 	{
 		if(strstr((const char*)answer, "CLOSED"))
-		{		
+		{
+			#ifdef ESP_DEBUG		
 			SEGGER_RTT_WriteString(0, (const char*)"Disconnected from server!\r\n");
+			#endif
 			ret = true;	
 		}
 		else
 		{
+			#ifdef ESP_DEBUG	
 			SEGGER_RTT_WriteString(0, (const char*)"Disconnecting error!\r\n");
+			#endif
 			ret = false;	
 		}
 	}
 	else
 	{
-		SEGGER_RTT_WriteString(0, (const char*)"Disconnect AT error!\r\n");
+		#ifdef ESP_DEBUG	
+		SEGGER_RTT_WriteString(0, (const char*)"Disconnect, AT error!\r\n");
+		#endif
 	}
 	return ret;
 }
@@ -281,12 +314,16 @@ bool ESP8266_Session_Send(const char* msg)
 		ESP8266_Serial_Print((uint8_t*)msg);
 		if(ESP8266_AtCmd(NULL, NULL, "SEND OK"))
 		{
+			#ifdef ESP_DEBUG
 			SEGGER_RTT_WriteString(0, (const char*)"Data sended succesfuly!\r\n");
+			#endif
 			ret = true;
 		}
 		else
 		{
+			#ifdef ESP_DEBUG
 			SEGGER_RTT_WriteString(0, (const char*)"Error while sending data!\r\n");
+			#endif
 			ret = false;
 		}
 	}
@@ -301,30 +338,38 @@ uint8_t ESP8266_Session_Status(void)
 {
 	char answer[BUF_MAX_SIZE];
 	uint8_t ret = 0;	
+	char cmd[64];
+	memset(cmd, 0 , 64);
 	if(ESP8266_AtCmd(answer, "AT+CIPSTATUS", "OK"))
 	{
 		if(strstr((const char*)answer, "STATUS:2"))
 		{
-			ret = 2;
+			ret = 2; // Station is connected to an AP and its IP is obtained
 		}
 		else if(strstr((const char*)answer, "STATUS:3"))
 		{
-			ret = 3;
+			ret = 3; // TCP or UDP session is open
 		}
 		else if(strstr((const char*)answer, "STATUS:4"))
 		{
-			ret = 4;
+			ret = 4; //  TCP or UDP session is close
 		}
 		else if(strstr((const char*)answer, "STATUS:5"))
 		{
-			ret = 5;
+			ret = 5; //  NOT connect to an AP
 		}
 	}
 	else
 	{
 		ret = 0;
+		#ifdef ESP_DEBUG
 		SEGGER_RTT_WriteString(0, (const char*)"Error: unknown status!\r\n");
+		#endif
 	}
+	#ifdef ESP_DEBUG
+	sprintf(cmd, "Connection status: %d\r\n", ret);
+	SEGGER_RTT_WriteString(0, (const char*)cmd);
+	#endif
 	return ret;
 }
 /**/
@@ -339,35 +384,62 @@ bool ESP8266_GET_Req(const char* uri)
 	// /22dd4423c4a34bf5b989a6342cc691d6/update/V0?value=2.0
 	sprintf(msg, "GET %s HTTP/1.1\r\n\r\n", uri);
 	sprintf(cmd, "AT+CIPSEND=%d", strlen(msg));
-	
 	if(ESP8266_AtCmd(answer, cmd, ">"))
 	{
 		ESP8266_Serial_Print((uint8_t*)msg);
 		if(ESP8266_AtCmd(NULL, NULL, "SEND OK"))
 		{
+			#ifdef ESP_DEBUG
+			SEGGER_RTT_WriteString(0, (const char*)"Message sended!\r\n");
+			#endif
 			if(ESP8266_AtCmd(NULL, NULL, "+IPD"))
 			{
+				#ifdef ESP_DEBUG
+				SEGGER_RTT_WriteString(0, (const char*)"Server answer recieved!\r\n");
+				#endif
 				if(ESP8266_AtCmd(answer, NULL, "\r\n\r\n"))
 				{
-					// SEGGER_RTT_WriteString(0, (const char*)answer);
-					// SEGGER_RTT_WriteString(0, (const char*)"\r\n");
+					#ifdef ESP_DEBUG
+					//SEGGER_RTT_WriteString(0, (const char*)answer);
+					//SEGGER_RTT_WriteString(0, (const char*)"\r\n");
+					#endif
 					if(strstr((const char*)answer, "200"))
 					{
+						#ifdef ESP_DEBUG
 						SEGGER_RTT_WriteString(0, (const char*)"200\r\n");
+						#endif
 						ret = true;
 					}
 					else if(strstr((const char*)answer, "400"))
 					{
+						#ifdef ESP_DEBUG
 						SEGGER_RTT_WriteString(0, (const char*)"400\r\n");
+						#endif
 						ret = false;
 					}
 					else if(strstr((const char*)answer, "500"))
 					{
+						#ifdef ESP_DEBUG
 						SEGGER_RTT_WriteString(0, (const char*)"500\r\n");
+						#endif
+						ret = false;
+					}
+					else
+					{
+						#ifdef ESP_DEBUG
+						SEGGER_RTT_WriteString(0, (const char*)answer);
+					  SEGGER_RTT_WriteString(0, (const char*)"\r\n");
+						#endif
 						ret = false;
 					}
 				}
 			}
+		}
+		else
+		{
+			#ifdef ESP_DEBUG
+			SEGGER_RTT_WriteString(0, (const char*)"Message send error!\r\n");
+			#endif
 		}
 	}
 	return ret;	
