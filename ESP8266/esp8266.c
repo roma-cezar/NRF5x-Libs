@@ -26,8 +26,8 @@ bool rx_data_rdy = false;
 	#include "task.h"
 	#include "queue.h"
 	#include "semphr.h"
-	#define LONG_TIME 0xffff
-	SemaphoreHandle_t m_uart_data_ready = NULL;
+	#define LONG_TIME 	0xffff
+	SemaphoreHandle_t 	m_uart_data_ready = NULL;
 #else
 #include "nrf_delay.h"
 #endif
@@ -208,6 +208,18 @@ char *ESP8266_Wlan_Start(const char* SSID, const char* PASS)
 		strncpy(ip, answer + ip_start_pos + 13, ip_end_pos - ip_start_pos - 17);
 	}	
 	return ip;
+}
+/**/
+bool ESP8266_Wlan_Stop(void)
+{
+	bool ret = false;
+	if(ESP8266_AtCmd(NULL, "AT+CWQAP", "OK")){
+		ret = true;
+		#ifdef ESP_DEBUG
+		SEGGER_RTT_WriteString(0, (const char*)"Disconnected from AP succesfuly!\r\n");
+		#endif
+	}	
+	return ret;
 }
 /**/
 bool ESP8266_Session_Open(const char* type, const char* ip, uint16_t port)
@@ -498,11 +510,11 @@ void ESP8266_Serial_Config(uint32_t baud)
 	
 #if defined (NRF51822)	
   NVIC_ClearPendingIRQ(UART0_IRQn);
-	NVIC_SetPriority(UART0_IRQn, 3);
+	NVIC_SetPriority(UART0_IRQn, 4);
 	NVIC_EnableIRQ(UART0_IRQn);
 #elif defined (NRF52832)
   NVIC_ClearPendingIRQ(UARTE0_UART0_IRQn);
-	NVIC_SetPriority(UARTE0_UART0_IRQn, 3);
+	NVIC_SetPriority(UARTE0_UART0_IRQn, 4);
 	NVIC_EnableIRQ(UARTE0_UART0_IRQn);
 #endif
 }
