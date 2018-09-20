@@ -16,13 +16,18 @@
 uint8_t eSERIAL_TXBUFF[MAX_USART_BUFFER];
 uint8_t eSERIAL_RXBUFF[MAX_USART_BUFFER];
 	
+
+
 bool tx_end_flag = false;
 bool rx_end_flag = false;
 
 uint16_t rx_len = 0;
 uint16_t tx_len = 0;
 
-extern void eSERIAL_RxCallback(uint8_t *data, uint8_t len);
+void eSERIAL_RxCallback(uint8_t *data, uint8_t len)
+{
+	
+}
 
 #if defined (NRF51822)
 void UART0_IRQHandler(void)
@@ -39,24 +44,18 @@ void UARTE0_UART0_IRQHandler(void)
 	if(NRF_UARTE0->EVENTS_RXDRDY)
 	{
 		NRF_UARTE0->EVENTS_RXDRDY = 0;
-	}
-	
-	if(NRF_UARTE0->EVENTS_RXTO)
-	{
-		NRF_UARTE0->EVENTS_RXTO = 0;
-		NRF_UARTE0->TASKS_FLUSHRX = 1;
-		__NOP();
+		rx_len++;
+		rx_end_flag = true;
 	}
 	
 	if(NRF_UARTE0->EVENTS_ENDRX)
-	{	 
-		NRF_UARTE0->EVENTS_ENDRX = 0;
-	  rx_end_flag = true;
-		//eSERIAL_Recieve(eSERIAL_RxCallback);
-		memset(eSERIAL_RXBUFF, 0, MAX_USART_BUFFER);
-		//NRF_UARTE0->SHORTS = UARTE_SHORTS_ENDRX_STARTRX_Msk;
+	{
+			NRF_UARTE0->EVENTS_ENDRX = 0;
 	}
-	
+	if(NRF_UARTE0->EVENTS_RXTO)
+	{
+			NRF_UARTE0->EVENTS_RXTO = 0;
+	}
 	if(NRF_UARTE0->EVENTS_ERROR)
 	{
 		NRF_UARTE0->EVENTS_ERROR = 0;
@@ -129,9 +128,9 @@ void eSERIAL_Init(uint32_t baud)
 	
 	
 		NRF_UARTE0->INTENCLR = 0xFFFFFFFF;
-		NRF_UARTE0->INTENSET = UARTE_INTENSET_ENDRX_Enabled << UARTE_INTENSET_ENDRX_Pos;
 		NRF_UARTE0->INTENSET = UARTE_INTENSET_RXDRDY_Enabled << UARTE_INTENSET_RXDRDY_Pos;
 		NRF_UARTE0->INTENSET = UARTE_INTENSET_ENDTX_Enabled << UARTE_INTENSET_ENDTX_Pos;
+		NRF_UARTE0->INTENSET = UARTE_INTENSET_ENDRX_Enabled << UARTE_INTENSET_ENDRX_Pos;
 	  NRF_UARTE0->INTENSET = UARTE_INTENSET_RXTO_Enabled << UARTE_INTENSET_RXTO_Pos;
 	  NRF_UARTE0->INTENSET = UARTE_INTENSET_ERROR_Enabled << UARTE_INTENSET_ERROR_Pos;
 		NRF_UARTE0->ENABLE = UARTE_ENABLE_ENABLE_Enabled;
@@ -149,31 +148,61 @@ void eSERIAL_Init(uint32_t baud)
 
 void eSERIAL_StartRX(void)
 {
-	rx_end_flag = false;
 	NRF_UARTE0->TASKS_STARTRX = 1;
 }
 	
 void eSERIAL_StartTX(void)
 {
-	tx_end_flag = false;
 	NRF_UARTE0->TASKS_STARTTX = 1;
 }
 
+void eSERIAL_StopRX(void)
+{
+	NRF_UARTE0->TASKS_STOPRX = 1;
+}
+	
+void eSERIAL_StopTX(void)
+{
+	NRF_UARTE0->TASKS_STOPTX = 1;
+}
 
 void eSERIAL_Transmit(uint8_t* data, uint16_t len)
 {
-	tx_end_flag = false;
-	memset(eSERIAL_TXBUFF, 0, MAX_USART_BUFFER);
-	memcpy((char*)eSERIAL_TXBUFF, data, len);
-	NRF_UARTE0->TXD.MAXCNT = (uint32_t)len;
-	NRF_UARTE0->TASKS_STARTTX = 1;
-	while(!tx_end_flag);
-	tx_end_flag = false;
+	if(len>0)
+	{
+		memcpy((char*)eSERIAL_TXBUFF, data, len);
+		NRF_UARTE0->TXD.PTR = (uint32_t)(eSERIAL_TXBUFF);
+		NRF_UARTE0->TXD.MAXCNT = (uint32_t)len;
+		NRF_UARTE0->TASKS_STARTTX = 1;
+		while(!tx_end_flag);
+		NRF_UARTE0->TASKS_STOPTX = 0;
+		memset(eSERIAL_TXBUFF, 0, MAX_USART_BUFFER);
+		NRF_UARTE0->EVENTS_ENDTX = 0;
+		tx_end_flag = false;
+	}
 }
 
-void eSERIAL_Recieve(void (*callback)(uint8_t*, uint8_t))
+uint16_t eSERIAL_Recieve(uint8_t* data)
 {
-	//while(!rx_end_flag);
-	rx_len = (uint16_t)(NRF_UARTE0->RXD.AMOUNT);
-	callback(eSERIAL_RXBUFF, rx_len);
+	uint32_t timeout=0;
+	uint16_t length=0;
+	if(rx_end_flag)
+	{		
+		timeout = 1000000;
+		while(!strstr(eSERIAL_RXBUFF, "OK")	&& --timeout);
+				
+		NRF_UARTE0->TASKS_STOPRX = 1;
+		memcpy(data, eSERIAL_RXBUFF, rx_len);
+		length=rx_len;
+
+		rx_len = 0;
+		memset(eSERIAL_RXBUFF, 0, MAX_USART_BUFFER);
+		NRF_UARTE0->EVENTS_RXDRDY = 0;
+		NRF_UARTE0->RXD.PTR = (uint32_t)(eSERIAL_RXBUFF);
+		NRF_UARTE0->RXD.MAXCNT = (uint32_t)MAX_USART_BUFFER - 1;
+		NRF_UARTE0->TASKS_STARTRX = 1;
+		
+	  rx_end_flag = false;
+	}
+	return length;
 }

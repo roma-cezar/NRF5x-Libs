@@ -576,7 +576,7 @@ bool ESP8266_GET_Req(const char* uri)
 	if(ESP8266_AtCmd(answer, cmd, ">", NULL))
 	{
 		ESP8266_Serial_Print((uint8_t*)msg);
-		if(ESP8266_AtCmd(answer, NULL, "SEND OK", 2000))
+		if(ESP8266_AtCmd(answer, NULL, "SEND OK", 1000))
 		{
 			#ifdef ESP_DEBUG
 			SEGGER_RTT_WriteString(0, timestamp);
@@ -629,6 +629,7 @@ bool ESP8266_GET_Req(const char* uri)
 				SEGGER_RTT_WriteString(0, timestamp);
 				SEGGER_RTT_WriteString(0, (const char*)" GET:  No answer from server\r\n");
 				#endif
+				ret = false;
 			}
 		}
 		else

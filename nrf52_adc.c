@@ -20,7 +20,7 @@ ArrayList_type SamplesList[MAX_SAADC_SAMPLES];
 //extern 	float CO_level;
 //extern 	float CH_level;
 //extern 	float bat_level;
-extern  uint16_t VBAT;
+uint16_t VBAT = 0;
 
 void SAADC_IRQHandler(void)
 {				
@@ -32,19 +32,12 @@ void SAADC_IRQHandler(void)
 			NRF_SAADC->RESULT.PTR = (uint32_t)(&SamplesList);
 			NRF_SAADC->TASKS_SAMPLE = 1;
 		}		
-		
 		// Event on one sample done
 		if(NRF_SAADC->EVENTS_DONE == 1)
 		{
 			NRF_SAADC->EVENTS_DONE=0;
-			/*if(sample++ != MAX_ADC_CNT)
-			{
-				NRF_SAADC->TASKS_SAMPLE = 1;
-			}*/
 			NRF_SAADC->TASKS_SAMPLE = 1;
-			__nop();
 		}	
-		
 		// Event on one conversation done
 		if(NRF_SAADC->EVENTS_END == 1)
 		{
@@ -63,6 +56,7 @@ void SAADC_Config(void)
 {
 	NVIC_DisableIRQ(SAADC_IRQn);
   NVIC_ClearPendingIRQ(SAADC_IRQn);
+	NVIC_SetPriority(SAADC_IRQn, 5);
 
 		uint8_t anlog_channels[] =
 	{
@@ -96,21 +90,20 @@ void SAADC_Config(void)
 	NRF_SAADC->INTENSET = SAADC_INTENSET_END_Enabled << SAADC_INTENSET_END_Pos;
   NRF_SAADC->INTENSET = SAADC_INTENSET_DONE_Enabled << SAADC_INTENSET_DONE_Pos;
 	//NRF_SAADC->INTENSET = SAADC_INTENSET_RESULTDONE_Enabled << SAADC_INTENSET_RESULTDONE_Pos;
-	
-	//NRF_SAADC->RESULT.MAXCNT = MAX_ADC_CNT;
-	//NRF_SAADC->RESULT.PTR = (uint32_t)&ReaderList;
-	
+}
+
+void SAADC_Enable(void)
+{
 	//Enable ADC
 	NRF_SAADC->ENABLE = (SAADC_ENABLE_ENABLE_Enabled << SAADC_ENABLE_ENABLE_Pos);
-	
-	NVIC_SetPriority(SAADC_IRQn, 4);
 	NVIC_EnableIRQ(SAADC_IRQn);
 }
 
 void SAADC_Disable(void)
 {
-		NVIC_DisableIRQ(SAADC_IRQn);
-		NRF_SAADC->ENABLE = (SAADC_ENABLE_ENABLE_Disabled << SAADC_ENABLE_ENABLE_Pos);	
+	// Disable ADC
+	NVIC_DisableIRQ(SAADC_IRQn);
+	NRF_SAADC->ENABLE = (SAADC_ENABLE_ENABLE_Disabled << SAADC_ENABLE_ENABLE_Pos);	
 }
 
 
@@ -121,9 +114,6 @@ void SAADC_StartMeasure(void)
 		SAADC_FLAG=1;
     // Start the ADC Start TASK and Sample TASK
     NRF_SAADC->TASKS_START = 1;
-    //while (NRF_SAADC->EVENTS_STARTED == 0);
-		//NRF_SAADC->EVENTS_STARTED = 0;
-    //NRF_SAADC->TASKS_SAMPLE = 1;
 	}
 }
 

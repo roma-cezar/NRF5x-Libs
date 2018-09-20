@@ -64,10 +64,10 @@ void SPI_Init(void) {
 	CS_DESELECT;
 	
 	//reset module
-	// nrf_gpio_pin_clear(SPI_RST_PIN);
-	// nrf_delay_ms(10);
-	// nrf_gpio_pin_set(SPI_RST_PIN);
-	// nrf_delay_ms(2000);
+	nrf_gpio_pin_clear(SPI_RST_PIN);
+	nrf_delay_ms(10);
+	nrf_gpio_pin_set(SPI_RST_PIN);
+	nrf_delay_ms(2000);
 }
 /**/
 uint8_t SPI_RW(uint8_t data) {

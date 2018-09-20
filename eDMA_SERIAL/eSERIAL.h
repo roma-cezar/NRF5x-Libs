@@ -5,12 +5,13 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define MAX_USART_BUFFER 200
+#define MAX_USART_BUFFER 256
 
 
 void eSERIAL_Init(uint32_t baud);
 void eSERIAL_Transmit(uint8_t* data, uint16_t len);
-void eSERIAL_Recieve(void (*callback)(uint8_t*, uint8_t));
+
+uint16_t eSERIAL_Recieve(uint8_t* data);
 
 
 #if defined (NRF51822)
