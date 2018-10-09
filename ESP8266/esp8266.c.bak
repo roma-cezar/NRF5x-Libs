@@ -787,7 +787,7 @@ bool ESP8266_GET_Req(const char* uri, m_SOCKET *socket)
 	sprintf(cmd, "AT+CIPSEND=%d", strlen(uri));
 	if(ESP8266_AtCmd(NULL, cmd, ">", 100))
 	{
-		ESP8266_Serial_Print((uint8_t*)uri);
+		ESP8266_Serial_Print((uint8_t*)msg);
 		if(ESP8266_AtCmd(answer, NULL, "SEND OK", 1000))
 		{
 			#ifdef ESP_DEBUG

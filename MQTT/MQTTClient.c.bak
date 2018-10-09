@@ -38,8 +38,8 @@ bool MQTTClient_Disconnect(SOCKET s)
 {	
 	if(session_opened)
 	{
-        uint8_t packet_224[] = {224, 0};
-        tcpclient_sendbytes(s, (uint8_t*)packet_224, 2);
+    uint8_t packet_224[] = {224, 0};
+    tcpclient_sendbytes(s, (uint8_t*)packet_224, 2);
 		Serial_Print((uint8_t*)"MQTT session closed\r\n");
 		session_opened = false;
 		return true;
@@ -128,7 +128,7 @@ bool MQTTClient_Publish(SOCKET s, unsigned char* topic, unsigned char* msg)
 		uint8_t fixed_header[] = {MQTTPUBLISH, (uint8_t)RemainingLength};// 0x30 0x00 0x09
 		uint8_t var_header[2 + strlen(topic)]; // 0x00 0x03 n r f
 		
-        var_header[0] = (uint8_t)((strlen(topic))>>8);
+    var_header[0] = (uint8_t)((strlen(topic))>>8);
 		var_header[1] = (uint8_t)(strlen(topic));
 		
 		memcpy(&var_header[2], topic, strlen(topic));
@@ -140,7 +140,7 @@ bool MQTTClient_Publish(SOCKET s, unsigned char* topic, unsigned char* msg)
 		memcpy((unsigned char *)packet + sizeof(fixed_header), var_header, sizeof(var_header));
 		memcpy((unsigned char *)packet + sizeof(fixed_header) + sizeof(var_header), msg, strlen(msg));
 
-        if(tcpclient_sendbytes(s, packet, sizeof(packet)/sizeof(uint8_t)))
+    if(tcpclient_sendbytes(s, packet, sizeof(packet)/sizeof(uint8_t)))
 		{
 			Serial_Print((uint8_t*)"MQTT publish!\r\n");
 			return true;

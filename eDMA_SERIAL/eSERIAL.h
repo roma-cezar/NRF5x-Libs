@@ -5,7 +5,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define MAX_USART_BUFFER 256
+#define MAX_USART_BUFFER 1024
 
 
 void eSERIAL_Init(uint32_t baud);

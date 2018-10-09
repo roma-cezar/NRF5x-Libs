@@ -238,7 +238,7 @@ bool ESP8266_AtCmd(uint8_t* databack, uint16_t size, const char* at_cmd, const c
 			if(strstr((const char*)eSERIAL_RXBUFF, at_answer))
 			{
 				at_ok_flag=true;
-				nrf_delay_ms(10); // to recieve all message symbols
+				nrf_delay_ms(1); // to recieve all message symbols
 				break;
 			}
 			else if(strstr((const char*)eSERIAL_RXBUFF, "busy"))
