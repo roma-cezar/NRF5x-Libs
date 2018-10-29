@@ -16,6 +16,10 @@ typedef struct ArrayList
 
 ArrayList_type SamplesList[MAX_SAADC_SAMPLES];
 
+	
+//extern 	float CO_level;
+//extern 	float CH_level;
+//extern 	float bat_level;
 uint16_t VBAT = 0;
 
 void SAADC_IRQHandler(void)

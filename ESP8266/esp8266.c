@@ -429,28 +429,31 @@ bool ESP8266_Wlan_Stop(void)
 	return ret;
 }
 /**/
-bool ESP8266_Ping(unsigned char *host)
+bool ESP8266_Ping(unsigned char *host, uint8_t tries)
 {
 	char cmd[64];
 	bool ret = false;
 	memset(cmd, 0 , 64);
 	sprintf(cmd, "AT+PING=\"%s\"", host);
-	if(ESP8266_AtCmd(NULL, cmd, "OK", 10000))
+	for(int i=0; i<tries; i++)
 	{
-		#ifdef ESP_DEBUG
-		memset(cmd, 0 , 64);
-		sprintf(cmd, "TCP:  Ping host %s is OK!\r\n", host);
-		SEGGER_RTT_WriteString(0, (const char*)cmd);
-		#endif
-		ret = true;
-	}
-	else
-	{
-		#ifdef ESP_DEBUG
-		memset(cmd, 0 , 64);
-		sprintf(cmd, "TCP:  Ping host %s is not avaliable!\r\n", host);
-		SEGGER_RTT_WriteString(0, (const char*)cmd);
-		#endif
+		if(ESP8266_AtCmd(NULL, cmd, "OK", 10000))
+		{
+			#ifdef ESP_DEBUG
+			memset(cmd, 0 , 64);
+			sprintf(cmd, "TCP:  Ping host %s is OK!\r\n", host);
+			SEGGER_RTT_WriteString(0, (const char*)cmd);
+			#endif
+			ret = true;
+		}
+		else
+		{
+			#ifdef ESP_DEBUG
+			memset(cmd, 0 , 64);
+			sprintf(cmd, "TCP:  Ping host %s is not avaliable!\r\n", host);
+			SEGGER_RTT_WriteString(0, (const char*)cmd);
+			#endif
+		}
 	}
 	return ret;
 }
@@ -469,9 +472,19 @@ bool ESP8266_Session_Open(m_SOCKET *socket)
 	SEGGER_RTT_WriteString(0, (const char*)cmd);
 	#endif
 	
+	if(strstr(socket->type, "SSL"))
+	{
+		if(ESP8266_AtCmd(NULL, "AT+CIPSSLSIZE=4096", "OK", 100))
+		{
+			#ifdef ESP_DEBUG
+			SEGGER_RTT_WriteString(0, (const char*)"SSL:  Buffer set up!\r\n");
+			#endif
+		}
+	}
+			
 	memset(cmd, 0 , 64);
 	sprintf(cmd, "AT+CIPSTART=\"%s\",\"%s\",%d", socket->type, socket->host, socket->port);
-	if(ESP8266_AtCmd(answer, cmd, "OK", 10000))
+	if(ESP8266_AtCmd(answer, cmd, "OK", 30000))
 	{
 		if(strstr((const char*)answer, "CONNECT"))
 		{	
@@ -483,15 +496,6 @@ bool ESP8266_Session_Open(m_SOCKET *socket)
 				SEGGER_RTT_WriteString(0, (const char*)cmd);
 				#endif
 				ret = true;
-			}
-			if(strstr(socket->type, "SSL"))
-			{
-				if(ESP8266_AtCmd(NULL, "AT+CIPSSLSIZE=4096", "OK", 100))
-				{
-					#ifdef ESP_DEBUG
-					SEGGER_RTT_WriteString(0, (const char*)"SSL:  Buffer set up!\r\n");
-					#endif
-				}
 			}
 		}
 		else
@@ -774,7 +778,7 @@ char* ESP8266_NTP_GetTime(void)
 	}
 }
 /**/
-bool ESP8266_GET_Req(const char* uri, m_SOCKET *socket)
+bool ESP8266_GET_Request(const char* uri, m_SOCKET *socket)
 {
 	char answer[BUF_MAX_SIZE];
 	bool ret = false;	
@@ -791,39 +795,38 @@ bool ESP8266_GET_Req(const char* uri, m_SOCKET *socket)
 		if(ESP8266_AtCmd(answer, NULL, "SEND OK", 1000))
 		{
 			#ifdef ESP_DEBUG
-			SEGGER_RTT_WriteString(0, timestamp);
-			SEGGER_RTT_WriteString(0, (const char*)" GET:  Message sended!\r\n");
+			SEGGER_RTT_WriteString(0, (const char*)"GET:  Message sended!\r\n");
 			#endif
 			if(ESP8266_Session_ReadBytes(socket))
 			{
 				#ifdef ESP_DEBUG
-				SEGGER_RTT_WriteString(0, (const char*)" GET:  Server answer recieved!\r\n");
+				SEGGER_RTT_WriteString(0, (const char*)"GET:  Server answer recieved!\r\n");
 				#endif
 				if(strstr((const char*)socket->payload.rx.data, "200"))
 				{
 					#ifdef ESP_DEBUG
-					SEGGER_RTT_WriteString(0, (const char*)" GET:  200\r\n");
+					SEGGER_RTT_WriteString(0, (const char*)"GET:  200\r\n");
 					#endif
 					ret = true;
 				}
 				else if(strstr((const char*)socket->payload.rx.data, "400"))
 				{
 					#ifdef ESP_DEBUG
-					SEGGER_RTT_WriteString(0, (const char*)" GET:  400\r\n");
+					SEGGER_RTT_WriteString(0, (const char*)"GET:  400\r\n");
 					#endif
 					ret = false;
 				}
 				else if(strstr((const char*)socket->payload.rx.data, "500"))
 				{
 					#ifdef ESP_DEBUG
-					SEGGER_RTT_WriteString(0, (const char*)" GET:  500\r\n");
+					SEGGER_RTT_WriteString(0, (const char*)"GET:  500\r\n");
 					#endif
 					ret = false;
 				}
 				else
 				{
 					#ifdef ESP_DEBUG
-					SEGGER_RTT_WriteString(0, (const char*)" ");
+					SEGGER_RTT_WriteString(0, (const char*)"GET:  ");
 					SEGGER_RTT_WriteString(0, (const char*)socket->payload.rx.data);
 					SEGGER_RTT_WriteString(0, (const char*)"\r\n");
 					#endif
@@ -833,7 +836,7 @@ bool ESP8266_GET_Req(const char* uri, m_SOCKET *socket)
 			else
 			{
 				#ifdef ESP_DEBUG
-				SEGGER_RTT_WriteString(0, (const char*)" GET:  No answer from server\r\n");
+				SEGGER_RTT_WriteString(0, (const char*)"GET:  No answer from server\r\n");
 				#endif
 				ret = false;
 			}
@@ -841,7 +844,6 @@ bool ESP8266_GET_Req(const char* uri, m_SOCKET *socket)
 		else
 		{
 			#ifdef ESP_DEBUG
-			SEGGER_RTT_WriteString(0, timestamp);
 			SEGGER_RTT_WriteString(0, (const char*)"GET:  Message send error!\r\n");
 			#endif
 		}

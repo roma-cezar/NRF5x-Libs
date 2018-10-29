@@ -17,6 +17,16 @@
 #define CON_TYPE_UDP	"UDP"
 #define CON_TYPE_SSL	"SSL"
 
+#define HTTP_TYPE_GET		"GET"
+#define HTTP_TYPE_POST	"POST"
+
+#define HTTP_200		0
+#define HTTP_400		1
+#define HTTP_401		2
+#define HTTP_404		3
+#define HTTP_500		4
+
+
 #define NTP_URI "GET /0.ru.pool.ntp.org HTTP/1.1\r\n\r\n"
 typedef struct
 {
@@ -51,8 +61,10 @@ typedef struct
 
 typedef struct
 {
+	unsigned char *type;
 	unsigned char *header;
-	unsigned char *code;
+	unsigned char *content;
+	uint16_t *ret_code;
 }m_HTTP;
 
 bool ESP8266_AtCmd(uint8_t* databack, const char* cmd, const char* answer, uint32_t fuse_time_ms);
@@ -69,7 +81,7 @@ bool ESP8266_Wlan_Start(m_WLAN *wlan);
 bool ESP8266_Wlan_Stop(void);
 char *ESP8266_Get_IP(void);
 char *ESP8266_Get_MAC(void);
-bool ESP8266_Ping(unsigned char *host);
+bool ESP8266_Ping(unsigned char *host, uint8_t tries);
 
 bool ESP8266_Session_Open(m_SOCKET *socket);
 bool ESP8266_Session_Send(m_SOCKET *socket);
@@ -77,7 +89,13 @@ bool ESP8266_Session_ReadLine(m_SOCKET *socket);
 bool ESP8266_Session_ReadBytes(m_SOCKET *socket);
 bool ESP8266_Session_Close(void);
 uint8_t ESP8266_Session_Status(void);
-bool ESP8266_GET_Req(const char* uri, m_SOCKET *socket);
+
+bool ESP8266_GET_Request(const char* uri, m_SOCKET *socket);
+
+
+
+
+
 
 bool ESP8266_NTP_Set(uint8_t time_zone, uint8_t en);
 char* ESP8266_NTP_GetTime(void);

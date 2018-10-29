@@ -13,7 +13,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-uint8_t databuf[112];
+uint8_t databuf[320];
 uint8_t bytes_rx=0;
 uint8_t c;
 bool rx_data_rdy = false;
